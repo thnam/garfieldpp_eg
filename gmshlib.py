@@ -69,6 +69,75 @@ class GeneralObject(object):
     print(str(self),file=outputfile)
     pass
 
+  def SetLabel(self, new_label):
+    """Set new label
+
+    :new_label: @todo
+    :returns: @todo
+
+    """
+    self._label = new_label
+    pass
+
+  def GetLabel(self):
+    """Gets label from the object
+    :returns: @todo
+
+    """
+    return self._label
+
+
+# Class GeneralList
+class ObjectList(object):
+  """General class for all object lists"""
+
+  def __init__(self, prefix = 'list0'):
+    """Inits a list
+
+    :prefix:  will be used for all objects in the list
+
+    """
+    self._list = []
+    self._prefix = prefix
+
+  def Add(self, an_object):
+    """Adds an object to the list
+
+    :an_object: @todo
+    :returns: @todo
+
+    """
+    try:
+      an_object.SetLabel(GetNextLabel(self._list[-1].GetLabel()))
+    except IndexError:
+      an_object.SetLabel(GetNextLabel(self._prefix))
+    except AttributeError:
+      pass
+
+    self._list.append(an_object)
+    pass
+
+  def Write(self, outputfile):
+    """Write all elements in the list to a file
+
+    :outputfile: @todo
+    :returns: @todo
+
+    """
+    WriteAll(self._list,outputfile)
+    pass
+
+  def __len__(self):
+    return len(self._list)
+  
+  def __getitem__(self, key):
+    return self._list[key]
+  
+  def __setitem__(self, key, value):
+    self._list[key] = value
+    pass
+
+
 # Class Point
 class Point(GeneralObject):
   """Point"""
@@ -121,7 +190,7 @@ class Point(GeneralObject):
 
     return Point(new_elements, label)
 
-
+    
 # Class Line
 class Line(GeneralObject):
   """Line, connects two points"""
@@ -136,6 +205,96 @@ class Line(GeneralObject):
       idtag = 'newc'
     GeneralObject.__init__(self, 'Line', points, label, idtag)
     
+
+class Circle(GeneralObject):
+  """Part of circle, from start point to end point"""
+
+  def __init__(self, points, label = 'c0', idtag = None):
+    """A circle, must provide three points
+
+    :points: list contains three points: start point, center point and end point
+
+    """
+    if idtag is None:
+      idtag = 'newc'
+    GeneralObject.__init__(self, 'Circle', points, label, idtag)
+
+
+class LineLoop(GeneralObject):
+  """Closed loop of curves"""
+
+  def __init__(self, curves, label = 'll0', idtag = None):
+    """A closed loop of curves
+
+    :points: list of curves, must be in correct order and orientation
+
+    """
+    if idtag is None:
+      idtag = 'newreg'
+    GeneralObject.__init__(self, 'Line Loop', curves, label, idtag)
+
+
+class RuledSurface(GeneralObject):
+  """Ruled surface"""
+
+  def __init__(self, elements, label = 'rs0', idtag = None):
+    """A ruled surface from a line loop
+
+    """
+    if idtag is None:
+      idtag = 'newreg'
+    GeneralObject.__init__(self, 'Ruled Surface', elements, label, idtag)
+
+
+class PhysicalSurface(GeneralObject):
+  """Physical surface"""
+
+  def __init__(self, elements, label = 'ps0', idtag = None):
+    """A physical surface
+
+    """
+    if idtag is None:
+      idtag = 'newreg'
+    GeneralObject.__init__(self, 'Physical Surface', elements, label, idtag)
+
+
+class SurfaceLoop(GeneralObject):
+  """Surface Loop"""
+
+  def __init__(self, elements, label = 'sl0', idtag = None):
+    """A physical surface
+
+    """
+    if idtag is None:
+      idtag = 'newreg'
+    GeneralObject.__init__(self, 'Surface Loop', elements, label, idtag)
+
+
+class Volume(GeneralObject):
+  """Volume"""
+
+  def __init__(self, elements, label = 'vl0', idtag = None):
+    """A volume
+
+    """
+    if idtag is None:
+      idtag = 'newreg'
+    GeneralObject.__init__(self, 'Volume', elements, label, idtag)
+
+
+class PhysicalVolume(GeneralObject):
+  """Physical Volume"""
+
+  def __init__(self, elements, label = 'pv0', idtag = None):
+    """A volume
+
+    """
+    if idtag is None:
+      idtag = 'newreg'
+    GeneralObject.__init__(self, 'Physical Volume', elements, label, idtag)
+
+
+###############################################################################
 ###############################################################################
 # Generally useful functions
 ###############################################################################
@@ -158,7 +317,7 @@ def GetIndex(label):
   try:
     return int(match.group(0))
   except AttributeError:
-    return 0
+    return -1
 
 def GetPrefix(label):
   """Get prefix from a label

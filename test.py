@@ -3,14 +3,19 @@
 import gmshlib
 f = open('test.geo','w')
 
-point = []
-point.append(gmshlib.GeneralObject('Point',[0,1,0, 0.1],'p0'))
-point.append(gmshlib.Point([0,0,1, 0.1],label = 'pp'))
-point.append(point[1].Translate(1,1,1))
+point = gmshlib.ObjectList('p')
+point.Add(gmshlib.Point([2,0,0,.1]))
+point.Add(point[-1].Translate(0,1,0))
+point.Add(point[-1].Translate(-2,0,0))
+point.Add(point[-1].Translate(0,-1,0))
 
-gmshlib.WriteAll(point,f)
+point.Write(f)
 
-line = []
-line.append(gmshlib.Line(point[1:3]))
+curve = gmshlib.ObjectList('c')
+curve.Add(gmshlib.Line([point[0], point[1]], idtag = 200))
+curve.Add(gmshlib.Line([point[1], point[2]]))
+curve.Add(gmshlib.Line(point[2:4]))
 
-gmshlib.WriteAll(line,f)
+curve.Write(f)
+
+
