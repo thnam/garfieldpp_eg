@@ -138,6 +138,29 @@ class ObjectList(object):
     pass
 
 
+class LineList(ObjectList):
+  """List of lines"""
+
+  def __init__(self, prefix = 'l'):
+    """Inits a list of lines
+
+    :prefix: @todo
+
+    """
+    ObjectList.__init__(self, prefix)
+    
+  def PolyLines(self, points):
+    """Makes lines from a list of points
+
+    :points: @todo
+    :returns: @todo
+
+    """
+    for i in range(len(points) - 1):
+      self.Add(Line(points[i:i+2]))
+    self.Add(Line([points[len(points)-1],points[0]]))
+    pass
+
 # Class Point
 class Point(GeneralObject):
   """Point"""
@@ -341,3 +364,15 @@ def GetNextLabel(label):
 
   """
   return GetPrefix(label) + str(GetIndex(label) + 1)
+
+def MakePolyLines(points):
+  """Makes lines through all points
+
+  :returns: list of lines
+
+  """
+  lines = ObjectList('l')
+  for i in range(len(points) - 1):
+    lines.Add(Line(points[i:i+2]))
+  lines.Add(Line([points[len(points)-1],points[0]]))
+  return lines
