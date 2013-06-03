@@ -24,7 +24,7 @@ curve.Add(gmshlib.Line([point[3],point[7]]))
 
 curve.Write(f)
 
-lineloop = gmshlib.ObjectList('ll')
+lineloop = gmshlib.ObjectList('ll', start_idtag = 100)
 lineloop.Add(gmshlib.LineLoop(curve[0:4]))
 lineloop.Add(gmshlib.LineLoop(curve[4:8]))
 lineloop.Add(gmshlib.LineLoop([curve[0],curve[9],curve[4].Reverse(),curve[8]]))

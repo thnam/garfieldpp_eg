@@ -2,6 +2,18 @@
 # encoding: utf-8
 from __future__ import print_function
 
+# Dictionary for next Gmsh object
+NextObj = {'Point':'newp',
+           'Line':'newc',
+           'Circle':'newc',
+           'Line Loop':'newreg',
+           'Plane Surface':'newreg',
+           'Ruled Surface':'newreg',
+           'Surface Loop':'newreg',
+           'Physical Surface':'newreg',
+           'Volume':'newreg',
+           'Physical Volume':'newreg'
+           }
 
 # Class GeneralObject
 class GeneralObject(object):
@@ -20,9 +32,10 @@ class GeneralObject(object):
     self._elements = elements
     self._objtype = objtype
     self._label = label
-    self._idtag = idtag
-    if idtag is None:
-      self._idtag = 'newp'
+    if type(idtag) is int:
+      self._idtag = idtag
+    else:
+      self._idtag = NextObj[objtype]
     
   def __str__(self):
     """Will be called by str() function
@@ -86,12 +99,21 @@ class GeneralObject(object):
     """
     return self._label
 
+  def SetIdTag(self, idtag):
+    """Set id tag 
+
+    :idtag: @todo
+    :returns: @todo
+
+    """
+    self._idtag = idtag
+    pass
 
 # Class GeneralList
 class ObjectList(object):
   """General class for all object lists"""
 
-  def __init__(self, prefix = 'list0'):
+  def __init__(self, prefix = 'list0', start_idtag = None):
     """Inits a list
 
     :prefix:  will be used for all objects in the list
@@ -99,6 +121,7 @@ class ObjectList(object):
     """
     self._list = []
     self._prefix = prefix
+    self._start_idtag = start_idtag
 
   def Add(self, an_object):
     """Adds an object to the list
@@ -107,12 +130,15 @@ class ObjectList(object):
     :returns: @todo
 
     """
-    try:
-      an_object.SetLabel(GetNextLabel(self._list[-1].GetLabel()))
-    except IndexError:
-      an_object.SetLabel(GetNextLabel(self._prefix))
-    except AttributeError:
-      pass
+    if (len(self._list) == 0) and (type(self._start_idtag) is int):
+      an_object.SetIdTag(self._start_idtag)
+    else:
+      try:
+        an_object.SetLabel(GetNextLabel(self._list[-1].GetLabel()))
+      except IndexError:
+        an_object.SetLabel(GetNextLabel(self._prefix))
+      except AttributeError:
+        pass
 
     self._list.append(an_object)
     pass
