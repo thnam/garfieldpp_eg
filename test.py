@@ -37,11 +37,13 @@ lineloop.Write(f)
 surface = gmshlib.ObjectList('sf')
 for i in range(len(lineloop)):
   surface.Add(gmshlib.RuledSurface([lineloop[i]]))
+surface.Add(gmshlib.PhysicalSurface(lineloop[0:1]))
+surface.Add(gmshlib.PhysicalSurface(lineloop[1:2]))
 
 surface.Write(f)
 
 surfaceloop = gmshlib.ObjectList('sl')
-surfaceloop.Add(gmshlib.SurfaceLoop(surface))
+surfaceloop.Add(gmshlib.SurfaceLoop(surface[0:-2]))
 surfaceloop.Write(f)
 
 vol = gmshlib.ObjectList('vol')
