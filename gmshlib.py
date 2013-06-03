@@ -6,7 +6,7 @@ import collections
 
 # Dictionary for next Gmsh object
 NextObj = {'Point':'newp',
-           'Line':'newc',
+           'Line':'newl',
            'Circle':'newc',
            'Line Loop':'newll',
            'Plane Surface':'news',
@@ -430,12 +430,12 @@ def MakeRectangularBox( lx, ly, lz, lc, center = [0,0,0], box_id = 0):
   y0 = center[1]
   z0 = center[2]
   id_prefix = 'box' + str(box_id) + '_'
+
   points = ObjectList(id_prefix + 'p')
   points.Add(Point([x0 - lx/2., y0 - ly/2., z0 - lz/2., lc]))
   points.Add(points[-1].Translate(lx,0,0))
   points.Add(points[-1].Translate(0,ly,0))
   points.Add(points[-1].Translate(-lx,0,0))
-
   for i in range(len(points)):
     points.Add(points[i].Translate(0,0,lz))
 
