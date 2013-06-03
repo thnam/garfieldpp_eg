@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from __future__ import print_function
+import collections
+#from __future__ import division
 
 # Dictionary for next Gmsh object
 NextObj = {'Point':'newp',
            'Line':'newc',
            'Circle':'newc',
-           'Line Loop':'newreg',
-           'Plane Surface':'newreg',
-           'Ruled Surface':'newreg',
-           'Surface Loop':'newreg',
-           'Physical Surface':'newreg',
-           'Volume':'newreg',
-           'Physical Volume':'newreg'
+           'Line Loop':'newll',
+           'Plane Surface':'news',
+           'Ruled Surface':'news',
+           'Physical Surface':'news',
+           'Surface Loop':'newsl',
+           'Volume':'newv',
+           'Physical Volume':'newv'
            }
 
 # Class GeneralObject
@@ -295,6 +297,18 @@ class RuledSurface(GeneralObject):
     GeneralObject.__init__(self, 'Ruled Surface', elements, label, idtag)
 
 
+class PlaneSurface(GeneralObject):
+  """Plane surface"""
+
+  def __init__(self, elements, label = 'rs0', idtag = None):
+    """A plane surface from a line loop
+
+    """
+    if idtag is None:
+      idtag = 'newreg'
+    GeneralObject.__init__(self, 'Plane Surface', elements, label, idtag)
+
+
 class PhysicalSurface(GeneralObject):
   """Physical surface"""
 
@@ -402,3 +416,61 @@ def MakePolyLines(points):
     lines.Add(Line(points[i:i+2]))
   lines.Add(Line([points[len(points)-1],points[0]]))
   return lines
+
+def MakeRectangularBox( lx, ly, lz, lc, center = [0,0,0], box_id = 0):
+  """Makes a rectangular box
+
+  :center: [x0, y0, z0]
+  :lx, ly, lz: length in x, y, z
+  :lc: characteristic length
+  :returns: list of points, lines, line loops, surface, volume
+
+  """
+  x0 = center[0]
+  y0 = center[1]
+  z0 = center[2]
+  id_prefix = 'box' + str(box_id) + '_'
+  points = ObjectList(id_prefix + 'p')
+  points.Add(Point([x0 - lx/2., y0 - ly/2., z0 - lz/2., lc]))
+  points.Add(points[-1].Translate(lx,0,0))
+  points.Add(points[-1].Translate(0,ly,0))
+  points.Add(points[-1].Translate(-lx,0,0))
+
+  for i in range(len(points)):
+    points.Add(points[i].Translate(0,0,lz))
+
+  lines = LineList(id_prefix + 'l')
+  lines.PolyLines(points[0:4])
+  lines.PolyLines(points[4:8])
+  lines.Add(Line([points[4],points[0]]))
+  lines.Add(Line([points[1],points[5]]))
+  lines.Add(Line([points[6],points[2]]))
+  lines.Add(Line([points[3],points[7]]))
+
+  lineloops = ObjectList(id_prefix + 'll')
+  lineloops.Add(LineLoop(lines[0:4]))
+  lineloops.Add(LineLoop(lines[4:8]))
+  lineloops.Add(LineLoop([lines[0],lines[9],lines[4].Reverse(),lines[8]]))
+  lineloops.Add(LineLoop([lines[1].Reverse(),lines[9],lines[5],lines[10]]))
+  lineloops.Add(LineLoop([lines[2],lines[11],lines[6].Reverse(),lines[10]]))
+  lineloops.Add(LineLoop([lines[3].Reverse(),lines[11],lines[7],lines[8]]))
+  
+  surfaces = ObjectList(id_prefix + 'sf')
+  for i in range(len(lineloops)):
+    surfaces.Add(PlaneSurface([lineloops[i]]))
+  #surface.Add(PhysicalSurface(lineloop[0:1]))
+  #surface.Add(PhysicalSurface(lineloop[1:2]))
+  
+  surfaceloops = ObjectList(id_prefix + 'sl')
+  surfaceloops.Add(SurfaceLoop(surfaces))
+  
+  volumes = ObjectList(id_prefix + 'vol')
+  volumes.Add(Volume(surfaceloops))
+  #volumes.Add(PhysicalVolume([volumes[0]])) 
+
+  return collections.OrderedDict([('points',points),
+                                  ('lines',lines),
+                                  ('lineloops',lineloops),
+                                  ('surfaces',surfaces),
+                                  ('surfaceloops',surfaceloops),
+                                  ('volumes',volumes)])
