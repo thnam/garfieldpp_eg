@@ -22,22 +22,22 @@ class GeneralObject(object):
   """General class for all Gmsh geometry objects: points, lines, curves,
   surfaces, volumes"""
 
-  def __init__(self, objtype, elements, label = None, idtag = None):
+  def __init__(self, objtype, elements, label = None, index = None):
     """Inits an object:
 
     :objtype: such as Point, Line, ...
     :elements: list of elements; for Point: x, y, z; for Line: points; ...
     :label: makes .geo file reading easier
-    :idtag: object id
+    :index: object id
 
     """
     self._elements = elements
     self._objtype = objtype
     self._label = label
-    if type(idtag) is int:
-      self._idtag = idtag
+    if type(index) is int:
+      self._index = index
     else:
-      self._idtag = NextObj[objtype]
+      self._index = NextObj[objtype]
     
   def __str__(self):
     """Will be called by str() function
@@ -63,7 +63,7 @@ class GeneralObject(object):
       str_list = str_list + str(self._elements[-1])
 
     return '%s = %s; %s(%s) = {%s};' %(self._label, 
-                                       self._idtag, self._objtype,
+                                       self._index, self._objtype,
                                        self._label,str_list)
 
   def Reverse(self):
@@ -101,21 +101,21 @@ class GeneralObject(object):
     """
     return self._label
 
-  def SetIdTag(self, idtag):
+  def Setindex(self, index):
     """Set id tag 
 
-    :idtag: @todo
+    :index: @todo
     :returns: @todo
 
     """
-    self._idtag = idtag
+    self._index = index
     pass
 
 # Class GeneralList
 class ObjectList(object):
   """General class for all object lists"""
 
-  def __init__(self, prefix = 'list0', start_idtag = None):
+  def __init__(self, prefix, start_index = None):
     """Inits a list
 
     :prefix:  will be used for all objects in the list
@@ -123,7 +123,7 @@ class ObjectList(object):
     """
     self._list = []
     self._prefix = prefix
-    self._start_idtag = start_idtag
+    self._start_index = start_index
 
   def Add(self, an_object):
     """Adds an object to the list
@@ -134,11 +134,11 @@ class ObjectList(object):
     """
     import copy
     tmp_object = copy.copy(an_object)
-    if (len(self._list) == 0) and (type(self._start_idtag) is int):
-      tmp_object.SetIdTag(self._start_idtag)
+    if (len(self._list) == 0) and (type(self._start_index) is int):
+      tmp_object.Setindex(self._start_index)
     else:
       try:
-        tmp_object.SetLabel(GetNextLabel(self._list[-1].GetLabel()))
+        tmp_object.SetLabel(self._prefix + str(len(self)))
       except IndexError:
         tmp_object.SetLabel(GetNextLabel(self._prefix))
       except AttributeError:
@@ -206,15 +206,15 @@ class LineList(ObjectList):
 class Point(GeneralObject):
   """Point"""
 
-  def __init__(self, elements, label = 'p0', idtag = None):
+  def __init__(self, elements, label = 'p0', index = None):
     """Inits a point with 3 coordinates, and (optional) characteristic length
 
     :elements: 3 coordinates, and characteristic length
     :label: 
-    :idtag: @todo
+    :index: @todo
 
     """
-    GeneralObject.__init__(self, 'Point', elements, label, idtag)
+    GeneralObject.__init__(self, 'Point', elements, label, index)
 
   def GetDistance(self, otherpoint):
     """Calculates distance from the current point to another point
@@ -229,7 +229,7 @@ class Point(GeneralObject):
     dz = self._elements[2] - otherpoint._elements[2]
     return math.sqrt(dx*dx + dy*dy + dz*dz)
 
-  def Translate(self, dx, dy, dz, lc = None, label = None, idtag = None):
+  def Translate(self, dx, dy, dz, lc = None, label = None, index = None):
     """Makes new point by translation
 
     :label: new point's label
@@ -259,115 +259,165 @@ class Point(GeneralObject):
 class Line(GeneralObject):
   """Line, connects two points"""
 
-  def __init__(self, points, label = 'l0', idtag = None):
+  def __init__(self, points, label = 'l0', index = None):
     """A line, must provide two points
 
     :points: list contains two points: start point and end point
 
     """
-    if idtag is None:
-      idtag = 'newc'
-    GeneralObject.__init__(self, 'Line', points, label, idtag)
+    if len(points) is not 2:
+      pass
+    else:
+      if index is None:
+        index = 'newc' 
+      GeneralObject.__init__(self, 'Line', points, label, index)
     
+  def Extrude(self, vector, index = 0):
+    """Extrude a line
+
+    :vector: a list of x, y, z
+    :returns: points, lines and surface
+
+    """
+    points = ObjectList('ext' + str(index) +'_p')
+    lines = ObjectList('ext' + str(index) +'_l')
+    lineloops = ObjectList('ext' + str(index) +'_ll')
+    surfaces = ObjectList('ext' + str(index) +'_sf')
+    points.Add(self._elements[0].Translate(vector[0],vector[1],vector[2]))
+    points.Add(self._elements[1].Translate(vector[0],vector[1],vector[2]))
+    lines.Add(Line([self._elements[1],points[1]]))
+    lines.Add(Line([points[1],points[0]]))
+    lines.Add(Line([points[0],self._elements[0]]))
+    lineloops.Add(LineLoop([self,lines[0],lines[1],lines[2]]))
+    surfaces.Add(RuledSurface(lineloops))
+    return collections.OrderedDict([('points',points),
+                                    ('lines',lines),
+                                    ('lineloops',lineloops),
+                                    ('surfaces',surfaces)])
 
 class Circle(GeneralObject):
   """Part of circle, from start point to end point"""
 
-  def __init__(self, points, label = 'c0', idtag = None):
+  def __init__(self, points, label = 'c0', index = None):
     """A circle, must provide three points
 
     :points: list contains three points: start point, center point and end point
 
     """
-    if idtag is None:
-      idtag = 'newc'
-    GeneralObject.__init__(self, 'Circle', points, label, idtag)
+    if index is None:
+      index = 'newc'
+    GeneralObject.__init__(self, 'Circle', points, label, index)
+
+  def Extrude(self, vector, index = 0):
+    """Extrude a line
+
+    :vector: a list of x, y, z
+    :returns: points, lines and surface
+
+    """
+    points = ObjectList('ext' + str(index) +'_p')
+    curves = ObjectList('ext' + str(index) +'_c')
+    lineloops = ObjectList('ext' + str(index) +'_ll')
+    surfaces = ObjectList('ext' + str(index) +'_sf')
+    points.Add(self._elements[0].Translate(vector[0],vector[1],vector[2]))
+    points.Add(self._elements[1].Translate(vector[0],vector[1],vector[2]))
+    points.Add(self._elements[2].Translate(vector[0],vector[1],vector[2]))
+    curves.Add(Line([self._elements[2],points[2]]))
+    curves.Add(Circle(points))
+    #lines.Add(Line([points[1],points[0]]))
+    curves.Add(Line([points[0],self._elements[0]]))
+    lineloops.Add(LineLoop([self,curves[0],curves[1].Reverse(),curves[2]]))
+    surfaces.Add(RuledSurface(lineloops))
+    return collections.OrderedDict([('points',points),
+                                    ('curves',curves),
+                                    ('lineloops',lineloops),
+                                    ('surfaces',surfaces)])
 
 
 class LineLoop(GeneralObject):
   """Closed loop of curves"""
 
-  def __init__(self, curves, label = 'll0', idtag = None):
+  def __init__(self, curves, label = 'll0', index = None):
     """A closed loop of curves
 
     :points: list of curves, must be in correct order and orientation
 
     """
-    if idtag is None:
-      idtag = 'newreg'
-    GeneralObject.__init__(self, 'Line Loop', curves, label, idtag)
+    if index is None:
+      index = 'newreg'
+    GeneralObject.__init__(self, 'Line Loop', curves, label, index)
 
 
 class RuledSurface(GeneralObject):
   """Ruled surface"""
 
-  def __init__(self, elements, label = 'rs0', idtag = None):
+  def __init__(self, elements, label = 'rs0', index = None):
     """A ruled surface from a line loop
 
     """
-    if idtag is None:
-      idtag = 'newreg'
-    GeneralObject.__init__(self, 'Ruled Surface', elements, label, idtag)
+    if index is None:
+      index = 'newreg'
+    GeneralObject.__init__(self, 'Ruled Surface', elements, label, index)
 
 
 class PlaneSurface(GeneralObject):
   """Plane surface"""
 
-  def __init__(self, elements, label = 'rs0', idtag = None):
+  def __init__(self, elements, label = 'rs0', index = None):
     """A plane surface from a line loop
 
     """
-    if idtag is None:
-      idtag = 'newreg'
-    GeneralObject.__init__(self, 'Plane Surface', elements, label, idtag)
+    if index is None:
+      index = 'newreg'
+    GeneralObject.__init__(self, 'Plane Surface', elements, label, index)
 
 
 class PhysicalSurface(GeneralObject):
   """Physical surface"""
 
-  def __init__(self, elements, label = 'ps0', idtag = None):
+  def __init__(self, elements, label = 'ps0', index = None):
     """A physical surface
 
     """
-    if idtag is None:
-      idtag = 'newreg'
-    GeneralObject.__init__(self, 'Physical Surface', elements, label, idtag)
+    if index is None:
+      index = 'newreg'
+    GeneralObject.__init__(self, 'Physical Surface', elements, label, index)
 
 
 class SurfaceLoop(GeneralObject):
   """Surface Loop"""
 
-  def __init__(self, elements, label = 'sl0', idtag = None):
+  def __init__(self, elements, label = 'sl0', index = None):
     """A physical surface
 
     """
-    if idtag is None:
-      idtag = 'newreg'
-    GeneralObject.__init__(self, 'Surface Loop', elements, label, idtag)
+    if index is None:
+      index = 'newreg'
+    GeneralObject.__init__(self, 'Surface Loop', elements, label, index)
 
 
 class Volume(GeneralObject):
   """Volume"""
 
-  def __init__(self, elements, label = 'vl0', idtag = None):
+  def __init__(self, elements, label = 'vl0', index = None):
     """A volume
 
     """
-    if idtag is None:
-      idtag = 'newreg'
-    GeneralObject.__init__(self, 'Volume', elements, label, idtag)
+    if index is None:
+      index = 'newreg'
+    GeneralObject.__init__(self, 'Volume', elements, label, index)
 
 
 class PhysicalVolume(GeneralObject):
   """Physical Volume"""
 
-  def __init__(self, elements, label = 'pv0', idtag = None):
+  def __init__(self, elements, label = 'pv0', index = None):
     """A volume
 
     """
-    if idtag is None:
-      idtag = 'newreg'
-    GeneralObject.__init__(self, 'Physical Volume', elements, label, idtag)
+    if index is None:
+      index = 'newreg'
+    GeneralObject.__init__(self, 'Physical Volume', elements, label, index)
 
 
 ###############################################################################
