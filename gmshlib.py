@@ -22,7 +22,8 @@ class GeneralObject(object):
   """General class for all Gmsh geometry objects: points, lines, curves,
   surfaces, volumes"""
 
-  def __init__(self, objtype, elements, label = None, index = None):
+  def __init__(self, objtype,  elements, label = None, 
+               n_dimension = 1,index = None):
     """Inits an object:
 
     :objtype: such as Point, Line, ...
@@ -33,6 +34,7 @@ class GeneralObject(object):
     """
     self._elements = elements
     self._objtype = objtype
+    self._n_dimension = n_dimension
     self._label = label
     if type(index) is int:
       self._index = index
@@ -110,6 +112,55 @@ class GeneralObject(object):
     """
     self._index = index
     pass
+
+
+class Object1D(GeneralObject):
+  """Docstring for Object1D """
+
+  def __init__(self, objtype, elements, label = None, index = None):
+    """@todo: to be defined1 """
+    GeneralObject.__init__(self, objtype, elements, label, 1, index)
+
+    
+class Object2D(GeneralObject):
+  """Docstring for Object2D """
+
+  def __init__(self, objtype, elements, label = None, index = None):
+    """@todo: to be defined1 """
+    GeneralObject.__init__(self, objtype, elements, label, 2, index)
+
+  def Extrude(self, vector, index = 0):
+    """Extrude a 2D object
+
+    :vector: a list of x, y, z
+    :returns: points, curves and surface
+
+    """
+    points = ObjectList('ext' + str(index) +'_p')
+    curves = ObjectList('ext' + str(index) +'_c')
+    lineloops = ObjectList('ext' + str(index) +'_ll')
+    surfaces = ObjectList('ext' + str(index) +'_sf')
+
+    for i in range(len(self._elements)): 
+      points.Add(self._elements[i].Translate(vector[0],vector[1],vector[2]))
+
+    curves.Add(Line([self._elements[-1],points[-1]]))
+    curves.Add(Object2D(self._objtype, points))
+    curves.Add(Line([points[0],self._elements[0]]))
+    lineloops.Add(LineLoop([self,curves[0],curves[1].Reverse(),curves[2]]))
+    surfaces.Add(RuledSurface(lineloops))
+    return collections.OrderedDict([('points',points),
+                                    ('curves',curves),
+                                    ('lineloops',lineloops),
+                                    ('surfaces',surfaces)])
+
+class Object3D(GeneralObject):
+  """Docstring for Object3D """
+
+  def __init__(self, objtype, elements, label = None, index = None):
+    """@todo: to be defined1 """
+    GeneralObject.__init__(self, objtype, elements, label, 3, index)
+
 
 # Class GeneralList
 class ObjectList(object):
@@ -203,7 +254,7 @@ class LineList(ObjectList):
     pass
 
 # Class Point
-class Point(GeneralObject):
+class Point(Object1D):
   """Point"""
 
   def __init__(self, elements, label = 'p0', index = None):
@@ -214,7 +265,7 @@ class Point(GeneralObject):
     :index: @todo
 
     """
-    GeneralObject.__init__(self, 'Point', elements, label, index)
+    Object1D.__init__(self, 'Point', elements, label, index)
 
   def GetDistance(self, otherpoint):
     """Calculates distance from the current point to another point
@@ -256,7 +307,7 @@ class Point(GeneralObject):
 
     
 # Class Line
-class Line(GeneralObject):
+class Line(Object2D):
   """Line, connects two points"""
 
   def __init__(self, points, label = 'l0', index = None):
@@ -270,32 +321,10 @@ class Line(GeneralObject):
     else:
       if index is None:
         index = 'newc' 
-      GeneralObject.__init__(self, 'Line', points, label, index)
+      Object2D.__init__(self, 'Line', points, label, index)
     
-  def Extrude(self, vector, index = 0):
-    """Extrude a line
 
-    :vector: a list of x, y, z
-    :returns: points, lines and surface
-
-    """
-    points = ObjectList('ext' + str(index) +'_p')
-    lines = ObjectList('ext' + str(index) +'_l')
-    lineloops = ObjectList('ext' + str(index) +'_ll')
-    surfaces = ObjectList('ext' + str(index) +'_sf')
-    points.Add(self._elements[0].Translate(vector[0],vector[1],vector[2]))
-    points.Add(self._elements[1].Translate(vector[0],vector[1],vector[2]))
-    lines.Add(Line([self._elements[1],points[1]]))
-    lines.Add(Line([points[1],points[0]]))
-    lines.Add(Line([points[0],self._elements[0]]))
-    lineloops.Add(LineLoop([self,lines[0],lines[1],lines[2]]))
-    surfaces.Add(RuledSurface(lineloops))
-    return collections.OrderedDict([('points',points),
-                                    ('lines',lines),
-                                    ('lineloops',lineloops),
-                                    ('surfaces',surfaces)])
-
-class Circle(GeneralObject):
+class Circle(Object2D):
   """Part of circle, from start point to end point"""
 
   def __init__(self, points, label = 'c0', index = None):
@@ -306,32 +335,7 @@ class Circle(GeneralObject):
     """
     if index is None:
       index = 'newc'
-    GeneralObject.__init__(self, 'Circle', points, label, index)
-
-  def Extrude(self, vector, index = 0):
-    """Extrude a line
-
-    :vector: a list of x, y, z
-    :returns: points, lines and surface
-
-    """
-    points = ObjectList('ext' + str(index) +'_p')
-    curves = ObjectList('ext' + str(index) +'_c')
-    lineloops = ObjectList('ext' + str(index) +'_ll')
-    surfaces = ObjectList('ext' + str(index) +'_sf')
-    points.Add(self._elements[0].Translate(vector[0],vector[1],vector[2]))
-    points.Add(self._elements[1].Translate(vector[0],vector[1],vector[2]))
-    points.Add(self._elements[2].Translate(vector[0],vector[1],vector[2]))
-    curves.Add(Line([self._elements[2],points[2]]))
-    curves.Add(Circle(points))
-    #lines.Add(Line([points[1],points[0]]))
-    curves.Add(Line([points[0],self._elements[0]]))
-    lineloops.Add(LineLoop([self,curves[0],curves[1].Reverse(),curves[2]]))
-    surfaces.Add(RuledSurface(lineloops))
-    return collections.OrderedDict([('points',points),
-                                    ('curves',curves),
-                                    ('lineloops',lineloops),
-                                    ('surfaces',surfaces)])
+    Object2D.__init__(self, 'Circle', points, label, index)
 
 
 class LineLoop(GeneralObject):

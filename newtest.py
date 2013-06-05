@@ -40,7 +40,7 @@ l.Add(gmshlib.Circle(p[0:3]))
 
 ex = l[0].Extrude([-7,0,0])
 p.AddList(ex['points'])
-l.AddList(ex['lines'])
+l.AddList(ex['curves'])
 p.Add(p[-1].Translate(0,2,0))
 ll.AddList(ex['lineloops'])
 sf.AddList(ex['surfaces'])
