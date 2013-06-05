@@ -132,17 +132,30 @@ class ObjectList(object):
     :returns: @todo
 
     """
+    import copy
+    tmp_object = copy.copy(an_object)
     if (len(self._list) == 0) and (type(self._start_idtag) is int):
-      an_object.SetIdTag(self._start_idtag)
+      tmp_object.SetIdTag(self._start_idtag)
     else:
       try:
-        an_object.SetLabel(GetNextLabel(self._list[-1].GetLabel()))
+        tmp_object.SetLabel(GetNextLabel(self._list[-1].GetLabel()))
       except IndexError:
-        an_object.SetLabel(GetNextLabel(self._prefix))
+        tmp_object.SetLabel(GetNextLabel(self._prefix))
       except AttributeError:
         pass
 
-    self._list.append(an_object)
+    self._list.append(tmp_object)
+    pass
+
+  def AddList(self, a_list):
+    """Add a list of objects
+
+    :a_list: @todo
+    :returns: @todo
+
+    """
+    for i in range(len(a_list)):
+      self._list.append(a_list[i])
     pass
 
   def Write(self, outputfile):
@@ -448,12 +461,18 @@ def MakeRectangularBox( lx, ly, lz, lc, center = [0,0,0], box_id = 0):
   lines.Add(Line([points[3],points[7]]))
 
   lineloops = ObjectList(id_prefix + 'll')
-  lineloops.Add(LineLoop(lines[0:4]))
-  lineloops.Add(LineLoop(lines[4:8]))
   lineloops.Add(LineLoop([lines[0],lines[9],lines[4].Reverse(),lines[8]]))
+  lineloops.Add(LineLoop(lines[0:4]))
   lineloops.Add(LineLoop([lines[1].Reverse(),lines[9],lines[5],lines[10]]))
   lineloops.Add(LineLoop([lines[2],lines[11],lines[6].Reverse(),lines[10]]))
+  lineloops.Add(LineLoop(lines[4:8]))
   lineloops.Add(LineLoop([lines[3].Reverse(),lines[11],lines[7],lines[8]]))
+  #lineloops.Add(LineLoop(lines[0:4]))
+  #lineloops.Add(LineLoop(lines[4:8]))
+  #lineloops.Add(LineLoop([lines[0],lines[9],lines[4].Reverse(),lines[8]]))
+  #lineloops.Add(LineLoop([lines[1].Reverse(),lines[9],lines[5],lines[10]]))
+  #lineloops.Add(LineLoop([lines[2],lines[11],lines[6].Reverse(),lines[10]]))
+  #lineloops.Add(LineLoop([lines[3].Reverse(),lines[11],lines[7],lines[8]]))
   
   surfaces = ObjectList(id_prefix + 'sf')
   for i in range(len(lineloops)):
