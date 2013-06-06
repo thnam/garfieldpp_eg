@@ -23,7 +23,7 @@ class GeneralObject(object):
   surfaces, volumes"""
 
   def __init__(self, objtype,  elements, label = None, 
-               n_dimension = 1,index = None):
+               n_dimension = 1,index = None, direction = None):
     """Inits an object:
 
     :objtype: such as Point, Line, ...
@@ -41,6 +41,13 @@ class GeneralObject(object):
     else:
       self._index = NextObj[objtype]
     
+    self._direction = []
+    if direction is None:
+      for i in range(len(self._elements)):
+        self._direction.append(1)
+    else:
+      self._direction = direction
+
   def __str__(self):
     """Will be called by str() function
 
@@ -56,8 +63,15 @@ class GeneralObject(object):
         #else:
           #str_list = str_list + str(element._label) + ', '
       for i in range(len(self._elements) - 1): 
-        str_list = str_list + str(self._elements[i]._label) + ', '
-      str_list = str_list + str(self._elements[-1]._label)
+        if self._direction[i] == -1:
+          str_list = str_list + '-' + str(self._elements[i]._label) + ', '
+        else:
+          str_list = str_list + str(self._elements[i]._label) + ', '
+
+      if self._direction[-1] == -1:
+        str_list = str_list + '-' + str(self._elements[-1]._label)
+      else:
+        str_list = str_list + str(self._elements[-1]._label)
 
     except AttributeError: # in case of elements are coordinates
       for i in range(len(self._elements) - 1): 
@@ -113,6 +127,16 @@ class GeneralObject(object):
     self._index = index
     pass
 
+  def SetDirection(self, vector):
+    """Set direction for elements
+
+    :vector: @todo
+    :returns: @todo
+
+    """
+    self._direction = vector
+    pass
+
 
 class Object1D(GeneralObject):
   """Docstring for Object1D """
@@ -125,41 +149,69 @@ class Object1D(GeneralObject):
 class Object2D(GeneralObject):
   """Docstring for Object2D """
 
-  def __init__(self, objtype, elements, label = None, index = None):
+  def __init__(self, objtype, elements, label = None, 
+               index = None, direction = None):
     """@todo: to be defined1 """
-    GeneralObject.__init__(self, objtype, elements, label, 2, index)
+    GeneralObject.__init__(self, objtype, elements, label, 2, index, direction)
 
-  def Extrude(self, vector, index = 0):
+  def Extrude(self, vector, index = 0, prefix = 'ext'):
     """Extrude a 2D object
 
     :vector: a list of x, y, z
     :returns: points, curves and surface
 
     """
-    points = ObjectList('ext' + str(index) +'_p')
-    curves = ObjectList('ext' + str(index) +'_c')
-    lineloops = ObjectList('ext' + str(index) +'_ll')
-    surfaces = ObjectList('ext' + str(index) +'_sf')
+    points = ObjectList(prefix + str(index) +'_p')
+    curves = ObjectList(prefix + str(index) +'_c')
+    lineloops = ObjectList(prefix + str(index) +'_ll')
+    surfaces = ObjectList(prefix + str(index) +'_sf')
+    surfaceloops = ObjectList(prefix + str(index) +'_sl')
+    volumes = ObjectList(prefix + str(index) +'_vl')
 
-    for i in range(len(self._elements)): 
-      points.Add(self._elements[i].Translate(vector[0],vector[1],vector[2]))
+    if self._elements[0]._n_dimension == 1: 
+      for i in range(len(self._elements)): 
+        points.Add(self._elements[i].Translate(vector[0],vector[1],vector[2])) 
 
-    curves.Add(Line([self._elements[-1],points[-1]]))
-    curves.Add(Object2D(self._objtype, points))
-    curves.Add(Line([points[0],self._elements[0]]))
-    lineloops.Add(LineLoop([self,curves[0],curves[1].Reverse(),curves[2]]))
-    surfaces.Add(RuledSurface(lineloops))
+      curves.Add(Line([self._elements[-1],points[-1]]))
+      curves.Add(Object2D(self._objtype, points))
+      curves.Add(Line([points[0],self._elements[0]]))
+      lineloops.Add(LineLoop([self,curves[0],curves[1],curves[2]]))
+      surfaces.Add(RuledSurface(lineloops))
+
+    elif self._elements[0]._n_dimension == 2:
+      tmp_list = []
+      for i in range(len(self._elements)):
+        tmp_ext = self._elements[i].Extrude(vector, 
+                                            prefix = 'ext' + str(index)
+                                            + 's' + str(i) + '_')
+        points.AddList(tmp_ext['points'])
+        curves.AddList(tmp_ext['curves'])
+        lineloops.AddList(tmp_ext['lineloops'])
+        surfaces.AddList(tmp_ext['surfaces'])
+        tmp_list.append(tmp_ext['curves'][1])
+
+      lineloops.Add(LineLoop(tmp_list, direction = self._direction))
+      surfaces.Add(RuledSurface([lineloops[-1]]))
+      surfaceloops.Add(SurfaceLoop(surfaces))
+      volumes.Add(Volume(surfaceloops))
+
+      pass
+    else:
+      pass
     return collections.OrderedDict([('points',points),
                                     ('curves',curves),
                                     ('lineloops',lineloops),
-                                    ('surfaces',surfaces)])
+                                    ('surfaces',surfaces),
+                                    ('surfaceloops',surfaceloops),
+                                    ('volumes',volumes)])
 
 class Object3D(GeneralObject):
   """Docstring for Object3D """
 
-  def __init__(self, objtype, elements, label = None, index = None):
+  def __init__(self, objtype, elements, label = None, 
+               index = None, direction = None):
     """@todo: to be defined1 """
-    GeneralObject.__init__(self, objtype, elements, label, 3, index)
+    GeneralObject.__init__(self, objtype, elements, label, 3, index, direction)
 
 
 # Class GeneralList
@@ -310,7 +362,7 @@ class Point(Object1D):
 class Line(Object2D):
   """Line, connects two points"""
 
-  def __init__(self, points, label = 'l0', index = None):
+  def __init__(self, points, label = 'l0', index = None, direction = None):
     """A line, must provide two points
 
     :points: list contains two points: start point and end point
@@ -321,13 +373,13 @@ class Line(Object2D):
     else:
       if index is None:
         index = 'newc' 
-      Object2D.__init__(self, 'Line', points, label, index)
+      Object2D.__init__(self, 'Line', points, label, index, direction)
     
 
 class Circle(Object2D):
   """Part of circle, from start point to end point"""
 
-  def __init__(self, points, label = 'c0', index = None):
+  def __init__(self, points, label = 'c0', index = None, direction = None):
     """A circle, must provide three points
 
     :points: list contains three points: start point, center point and end point
@@ -335,13 +387,13 @@ class Circle(Object2D):
     """
     if index is None:
       index = 'newc'
-    Object2D.__init__(self, 'Circle', points, label, index)
+    Object2D.__init__(self, 'Circle', points, label, index, direction)
 
 
-class LineLoop(GeneralObject):
+class LineLoop(Object2D):
   """Closed loop of curves"""
 
-  def __init__(self, curves, label = 'll0', index = None):
+  def __init__(self, curves, label = 'll0', index = None, direction = None):
     """A closed loop of curves
 
     :points: list of curves, must be in correct order and orientation
@@ -349,58 +401,84 @@ class LineLoop(GeneralObject):
     """
     if index is None:
       index = 'newreg'
-    GeneralObject.__init__(self, 'Line Loop', curves, label, index)
+    Object2D.__init__(self, 'Line Loop', curves, label, index, direction)
+
+    if direction is None:
+      for i in range(len(self._elements) - 2):
+        if self._direction[i] == 1:
+          if (self._elements[i]._elements[1]._label !=
+              self._elements[i+1]._elements[0]._label):
+            self._direction[i+1] = -1
+          else:
+            pass 
+        else:
+          if (self._elements[i]._elements[1]._label !=
+              self._elements[i+1]._elements[1]._label):
+            self._direction[i+1] = -1
+          else:
+            pass
+      if (self._elements[-1]._elements[1]._label 
+          != self._elements[0]._elements[0]._label):
+        self._direction[-1] = -1
+      else:
+        pass
+
+    #for i in range(len(self._elements)):
+      #print (str(self._elements[i]._elements[0]._label) +', ' +
+             #str(self._elements[i]._elements[1]._label))
+      #print (self._direction[i])
 
 
-class RuledSurface(GeneralObject):
+class RuledSurface(Object2D):
   """Ruled surface"""
 
-  def __init__(self, elements, label = 'rs0', index = None):
+  def __init__(self, elements, label = 'rs0', index = None, direction = None):
     """A ruled surface from a line loop
 
     """
     if index is None:
       index = 'newreg'
-    GeneralObject.__init__(self, 'Ruled Surface', elements, label, index)
+    Object2D.__init__(self, 'Ruled Surface', elements, label, index, direction)
 
 
-class PlaneSurface(GeneralObject):
+class PlaneSurface(Object2D):
   """Plane surface"""
 
-  def __init__(self, elements, label = 'rs0', index = None):
+  def __init__(self, elements, label = 'rs0', index = None, direction = None):
     """A plane surface from a line loop
 
     """
     if index is None:
       index = 'newreg'
-    GeneralObject.__init__(self, 'Plane Surface', elements, label, index)
+    Object2D.__init__(self, 'Plane Surface', elements, label, index, direction)
 
 
-class PhysicalSurface(GeneralObject):
+class PhysicalSurface(Object2D):
   """Physical surface"""
 
-  def __init__(self, elements, label = 'ps0', index = None):
+  def __init__(self, elements, label = 'ps0', index = None, direction = None):
     """A physical surface
 
     """
     if index is None:
       index = 'newreg'
-    GeneralObject.__init__(self, 'Physical Surface', elements, label, index)
+    Object2D.__init__(self, 'Physical Surface', elements, label, index,
+                      direction)
 
 
-class SurfaceLoop(GeneralObject):
+class SurfaceLoop(Object3D):
   """Surface Loop"""
 
-  def __init__(self, elements, label = 'sl0', index = None):
+  def __init__(self, elements, label = 'sl0', index = None, direction = None):
     """A physical surface
 
     """
     if index is None:
       index = 'newreg'
-    GeneralObject.__init__(self, 'Surface Loop', elements, label, index)
+    Object3D.__init__(self, 'Surface Loop', elements, label, index, direction)
 
 
-class Volume(GeneralObject):
+class Volume(Object3D):
   """Volume"""
 
   def __init__(self, elements, label = 'vl0', index = None):
@@ -409,10 +487,10 @@ class Volume(GeneralObject):
     """
     if index is None:
       index = 'newreg'
-    GeneralObject.__init__(self, 'Volume', elements, label, index)
+    Object3D.__init__(self, 'Volume', elements, label, index)
 
 
-class PhysicalVolume(GeneralObject):
+class PhysicalVolume(Object3D):
   """Physical Volume"""
 
   def __init__(self, elements, label = 'pv0', index = None):
@@ -421,7 +499,7 @@ class PhysicalVolume(GeneralObject):
     """
     if index is None:
       index = 'newreg'
-    GeneralObject.__init__(self, 'Physical Volume', elements, label, index)
+    Object3D.__init__(self, 'Physical Volume', elements, label, index)
 
 
 ###############################################################################
@@ -472,13 +550,16 @@ def GetNextLabel(label):
   """
   return GetPrefix(label) + str(GetIndex(label) + 1)
 
-def MakePolyLines(points):
+def MakePolyLines(points, prefix = None):
   """Makes lines through all points
 
   :returns: list of lines
 
   """
-  lines = ObjectList('l')
+  if prefix is None:
+    prefix = 'l'
+
+  lines = ObjectList(prefix)
   for i in range(len(points) - 1):
     lines.Add(Line(points[i:i+2]))
   lines.Add(Line([points[len(points)-1],points[0]]))
