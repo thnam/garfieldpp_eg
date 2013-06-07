@@ -147,7 +147,7 @@ class Object1D(GeneralObject):
 
     
 class Object2D(GeneralObject):
-  """Docstring for Object2D """
+  """General 2-D object """
 
   def __init__(self, objtype, elements, label = None, 
                index = None, direction = None):
@@ -169,35 +169,98 @@ class Object2D(GeneralObject):
     volumes = ObjectList(prefix + str(index) +'_vl')
 
     if self._elements[0]._n_dimension == 1: 
+      """ 
+      Lines and circle arcs
+      """
       for i in range(len(self._elements)): 
-        points.Add(self._elements[i].Translate(vector[0],vector[1],vector[2])) 
+        points.Add(self._elements[i].Translate(vector))
 
       curves.Add(Line([self._elements[-1],points[-1]]))
       curves.Add(Object2D(self._objtype, points))
       curves.Add(Line([points[0],self._elements[0]]))
       lineloops.Add(LineLoop([self,curves[0],curves[1],curves[2]]))
       surfaces.Add(RuledSurface(lineloops))
+      pass
 
-    elif self._elements[0]._n_dimension == 2:
-      tmp_list = []
+    elif type(self) is LineLoop:
+      """ 
+      Line loops
+      """
+      org_points = []
+      org_points_2 = []
+      new_points = []
+      point_map = {}
+      """ 
+      fisrtly, translate all points and make a map for them; 
+      then, copy original line loop to new one 
+      finally, make side surfaces
+      """
+      for i in range(len(self._elements)): #  translating points
+        for j in range(len(self._elements[i]._elements)):
+          if self._elements[i]._elements[j] in org_points:
+            pass
+          else:
+            org_points.append(self._elements[i]._elements[j])
+            if j == 0 or j == len(self._elements[i]._elements) - 1:
+              org_points_2.append(self._elements[i]._elements[j])
+              pass
+            pass
+        pass
+
+      for i in range(len(org_points)): #  mapping
+        points.Add(org_points[i].Translate(vector))
+        new_points.append(points[-1])
+        point_map[org_points[i]._label] = new_points[-1]
+        pass
+
+      tmp_curve = []
+      curve_map = {}
+      for i in range(len(self._elements)): #  copying line loop
+        tmp_point_list = []
+        for j in range(len(self._elements[i]._elements)):
+          tmp_point_list.append(
+            point_map[self._elements[i]._elements[j]._label])
+          pass
+
+        curves.Add(Object2D(self._elements[i]._objtype,tmp_point_list))
+        tmp_curve.append(curves[-1])
+        curve_map[self._elements[i]._label] = curves[-1]
+        pass
+
+      lineloops.Add(LineLoop(tmp_curve))
+      surfaces.Add(RuledSurface(lineloops[-1::]))
+
+      line_map = {}
+      for i in range(len(org_points_2)): #  making side faces
+        curves.Add(Line([org_points_2[i],point_map[org_points_2[i]._label]]))
+        line_map[org_points_2[i]._label] = curves[-1]
+        pass
       for i in range(len(self._elements)):
-        tmp_ext = self._elements[i].Extrude(vector, 
-                                            prefix = 'ext' + str(index)
-                                            + 's' + str(i) + '_')
-        points.AddList(tmp_ext['points'])
-        curves.AddList(tmp_ext['curves'])
-        lineloops.AddList(tmp_ext['lineloops'])
-        surfaces.AddList(tmp_ext['surfaces'])
-        tmp_list.append(tmp_ext['curves'][1])
+        lineloops.Add(
+          LineLoop([
+            self._elements[i],
+            line_map[self._elements[i]._elements[-1]._label],
+            curve_map[self._elements[i]._label],
+            line_map[self._elements[i]._elements[0]._label]
+          ]))
+        surfaces.Add(RuledSurface([lineloops[-1]]))
+        pass
+      pass
+    elif (type(self) is RuledSurface) or (type(self) is PlaneSurface):
+      tmp_ext = self._elements[0].Extrude(vector, index, prefix)
+      points.AddList(tmp_ext['points'])
+      curves.AddList(tmp_ext['curves'])
+      lineloops.AddList(tmp_ext['lineloops'])
+      surfaces.AddList(tmp_ext['surfaces'])
 
-      lineloops.Add(LineLoop(tmp_list, direction = self._direction))
-      surfaces.Add(RuledSurface([lineloops[-1]]))
-      surfaceloops.Add(SurfaceLoop(surfaces))
+      tmp_surface_list = surfaces[:]
+      tmp_surface_list.append(self)
+      surfaceloops.Add(SurfaceLoop(tmp_surface_list))
       volumes.Add(Volume(surfaceloops))
-
       pass
     else:
       pass
+
     return collections.OrderedDict([('points',points),
                                     ('curves',curves),
                                     ('lineloops',lineloops),
@@ -332,7 +395,8 @@ class Point(Object1D):
     dz = self._elements[2] - otherpoint._elements[2]
     return math.sqrt(dx*dx + dy*dy + dz*dz)
 
-  def Translate(self, dx, dy, dz, lc = None, label = None, index = None):
+  #def Translate(self, dx, dy, dz, lc = None, label = None, index = None):
+  def Translate(self, vector, lc = None, label = None, index = None):
     """Makes new point by translation
 
     :label: new point's label
@@ -341,9 +405,9 @@ class Point(Object1D):
     :returns: new point by translation
 
     """
-    x = self._elements[0] + dx
-    y = self._elements[1] + dy
-    z = self._elements[2] + dz
+    x = self._elements[0] + vector[0]
+    y = self._elements[1] + vector[1]
+    z = self._elements[2] + vector[2]
     new_elements = []
 
     try:
@@ -406,18 +470,18 @@ class LineLoop(Object2D):
     if direction is None:
       for i in range(len(self._elements) - 2):
         if self._direction[i] == 1:
-          if (self._elements[i]._elements[1]._label !=
+          if (self._elements[i]._elements[-1]._label !=
               self._elements[i+1]._elements[0]._label):
             self._direction[i+1] = -1
           else:
             pass 
         else:
-          if (self._elements[i]._elements[1]._label !=
-              self._elements[i+1]._elements[1]._label):
+          if (self._elements[i]._elements[-1]._label !=
+              self._elements[i+1]._elements[-1]._label):
             self._direction[i+1] = -1
           else:
             pass
-      if (self._elements[-1]._elements[1]._label 
+      if (self._elements[-1]._elements[-1]._label 
           != self._elements[0]._elements[0]._label):
         self._direction[-1] = -1
       else:
@@ -581,11 +645,11 @@ def MakeRectangularBox( lx, ly, lz, lc, center = [0,0,0], box_id = 0):
 
   points = ObjectList(id_prefix + 'p')
   points.Add(Point([x0 - lx/2., y0 - ly/2., z0 - lz/2., lc]))
-  points.Add(points[-1].Translate(lx,0,0))
-  points.Add(points[-1].Translate(0,ly,0))
-  points.Add(points[-1].Translate(-lx,0,0))
+  points.Add(points[-1].Translate([lx,0,0]))
+  points.Add(points[-1].Translate([0,ly,0]))
+  points.Add(points[-1].Translate([-lx,0,0]))
   for i in range(len(points)):
-    points.Add(points[i].Translate(0,0,lz))
+    points.Add(points[i].Translate([0,0,lz]))
 
   lines = LineList(id_prefix + 'l')
   lines.PolyLines(points[0:4])
