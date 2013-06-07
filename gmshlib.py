@@ -227,7 +227,7 @@ class Object2D(GeneralObject):
         curve_map[self._elements[i]._label] = curves[-1]
         pass
 
-      lineloops.Add(LineLoop(tmp_curve))
+      lineloops.Add(LineLoop(tmp_curve[:]))
       surfaces.Add(RuledSurface(lineloops[-1::]))
 
       line_map = {}
@@ -246,18 +246,28 @@ class Object2D(GeneralObject):
         surfaces.Add(RuledSurface([lineloops[-1]]))
         pass
       pass
+
     elif (type(self) is RuledSurface) or (type(self) is PlaneSurface):
-      tmp_ext = self._elements[0].Extrude(vector, index, prefix)
-      points.AddList(tmp_ext['points'])
-      curves.AddList(tmp_ext['curves'])
-      lineloops.AddList(tmp_ext['lineloops'])
-      surfaces.AddList(tmp_ext['surfaces'])
+      """ 
+      Ruled surfaces and plane surfaces
+      """
+      tmp_top_ll = []
+      for i in range(len(self._elements)):
+        tmp_ext = self._elements[i].Extrude(vector, i, prefix + str(index)+ 's')
+        points.AddList(tmp_ext['points'])
+        curves.AddList(tmp_ext['curves'])
+        lineloops.AddList(tmp_ext['lineloops'])
+        surfaces.AddList(tmp_ext['surfaces'][1:])
+        tmp_top_ll.append(tmp_ext['lineloops'][0])
+        pass
+      surfaces.Add(RuledSurface(tmp_top_ll[:]))
 
       tmp_surface_list = surfaces[:]
       tmp_surface_list.append(self)
       surfaceloops.Add(SurfaceLoop(tmp_surface_list))
       volumes.Add(Volume(surfaceloops))
       pass
+
     else:
       pass
 
