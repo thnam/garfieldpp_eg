@@ -1,0 +1,4 @@
+Test example of Gmsh-Elmer-Garfield++: simple parallel capacitor
+- run.sh: a run script
+- cap.py: python script to generate Gmsh geometry, cap.geo
+- cap.geo: geometry
