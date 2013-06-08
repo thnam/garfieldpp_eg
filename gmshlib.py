@@ -260,7 +260,7 @@ class Object2D(GeneralObject):
         surfaces.AddList(tmp_ext['surfaces'][1:])
         tmp_top_ll.append(tmp_ext['lineloops'][0])
         pass
-      surfaces.Add(RuledSurface(tmp_top_ll[:]))
+      surfaces.Add(Object2D(self._objtype, tmp_top_ll[:]))
 
       tmp_surface_list = surfaces[:]
       tmp_surface_list.append(self)
