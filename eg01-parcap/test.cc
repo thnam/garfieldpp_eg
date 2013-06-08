@@ -59,8 +59,8 @@ int main(int argc, char * argv[]) {
     vf->SetSensor(sensor);
     vf->SetCanvas(c1);
     vf->SetArea(-1*ext_x,-1*ext_y,ext_x,ext_y);
-    vf->SetNumberOfContours(50);
-    vf->SetNumberOfSamples2d(100,100);
+    vf->SetNumberOfContours(30);
+    vf->SetNumberOfSamples2d(70,70);
     vf->SetPlane(0,-1,0,0,0,0);
 
     // Set up the object for FE mesh visualization.

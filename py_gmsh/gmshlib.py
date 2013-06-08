@@ -655,48 +655,28 @@ def MakeRectangularBox( lx, ly, lz, lc, center = [0,0,0], box_id = 0):
   id_prefix = 'box' + str(box_id) + '_'
 
   points = ObjectList(id_prefix + 'p')
+  lines = LineList(id_prefix + 'l')
+  lineloops = ObjectList(id_prefix + 'll')
+  surfaces = ObjectList(id_prefix + 'sf')
+  surfaceloops = ObjectList(id_prefix + 'sl')
+  volumes = ObjectList(id_prefix + 'vol')
+
   points.Add(Point([x0 - lx/2., y0 - ly/2., z0 - lz/2., lc]))
   points.Add(points[-1].Translate([lx,0,0]))
   points.Add(points[-1].Translate([0,ly,0]))
   points.Add(points[-1].Translate([-lx,0,0]))
-  for i in range(len(points)):
-    points.Add(points[i].Translate([0,0,lz]))
-
-  lines = LineList(id_prefix + 'l')
   lines.PolyLines(points[0:4])
-  lines.PolyLines(points[4:8])
-  lines.Add(Line([points[4],points[0]]))
-  lines.Add(Line([points[1],points[5]]))
-  lines.Add(Line([points[6],points[2]]))
-  lines.Add(Line([points[3],points[7]]))
-
-  lineloops = ObjectList(id_prefix + 'll')
-  lineloops.Add(LineLoop([lines[0],lines[9],lines[4].Reverse(),lines[8]]))
   lineloops.Add(LineLoop(lines[0:4]))
-  lineloops.Add(LineLoop([lines[1].Reverse(),lines[9],lines[5],lines[10]]))
-  lineloops.Add(LineLoop([lines[2],lines[11],lines[6].Reverse(),lines[10]]))
-  lineloops.Add(LineLoop(lines[4:8]))
-  lineloops.Add(LineLoop([lines[3].Reverse(),lines[11],lines[7],lines[8]]))
-  #lineloops.Add(LineLoop(lines[0:4]))
-  #lineloops.Add(LineLoop(lines[4:8]))
-  #lineloops.Add(LineLoop([lines[0],lines[9],lines[4].Reverse(),lines[8]]))
-  #lineloops.Add(LineLoop([lines[1].Reverse(),lines[9],lines[5],lines[10]]))
-  #lineloops.Add(LineLoop([lines[2],lines[11],lines[6].Reverse(),lines[10]]))
-  #lineloops.Add(LineLoop([lines[3].Reverse(),lines[11],lines[7],lines[8]]))
-  
-  surfaces = ObjectList(id_prefix + 'sf')
-  for i in range(len(lineloops)):
-    surfaces.Add(PlaneSurface([lineloops[i]]))
-  #surface.Add(PhysicalSurface(lineloop[0:1]))
-  #surface.Add(PhysicalSurface(lineloop[1:2]))
-  
-  surfaceloops = ObjectList(id_prefix + 'sl')
-  surfaceloops.Add(SurfaceLoop(surfaces))
-  
-  volumes = ObjectList(id_prefix + 'vol')
-  volumes.Add(Volume(surfaceloops))
-  #volumes.Add(PhysicalVolume([volumes[0]])) 
+  surfaces.Add(RuledSurface(lineloops))
 
+  ext1 = surfaces[-1].Extrude([0,0,lz])
+  points.AddList(ext1['points'])
+  lines.AddList(ext1['curves'])
+  lineloops.AddList(ext1['lineloops'])
+  surfaces.AddList(ext1['surfaces'])
+  surfaceloops.AddList(ext1['surfaceloops'])
+  volumes.AddList(ext1['volumes'])
+  
   return collections.OrderedDict([('points',points),
                                   ('lines',lines),
                                   ('lineloops',lineloops),

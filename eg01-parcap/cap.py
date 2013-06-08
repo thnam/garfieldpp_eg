@@ -7,7 +7,7 @@ import gmshlib
 f = open('cap.geo','w')
 
 # Outer box
-box1 = gmshlib.MakeRectangularBox(2,2,2,0.1)
+box1 = gmshlib.MakeRectangularBox(2,2,2,0.2)
 for key in box1:
   box1[key].Write(f)
 
@@ -17,8 +17,8 @@ for key in box2:
   box2[key].Write(f)
 
 ps = gmshlib.ObjectList('ps')
-ps.Add(gmshlib.PhysicalSurface([box2['surfaces'][1]]))
-ps.Add(gmshlib.PhysicalSurface([box2['surfaces'][4]]))
+ps.Add(gmshlib.PhysicalSurface([box2['surfaces'][0]]))
+ps.Add(gmshlib.PhysicalSurface([box2['surfaces'][-1]]))
 ps.Write(f)
 
 inner_sf = box2['surfaceloops']
