@@ -309,7 +309,7 @@ class ObjectList(object):
 
     """
     import copy
-    tmp_object = copy.copy(an_object)
+    tmp_object = copy.deepcopy(an_object)
     if (len(self._list) == 0) and (type(self._start_index) is int):
       tmp_object.Setindex(self._start_index)
     else:
@@ -473,34 +473,35 @@ class LineLoop(Object2D):
     :points: list of curves, must be in correct order and orientation
 
     """
+    import copy
     if index is None:
       index = 'newreg'
     Object2D.__init__(self, 'Line Loop', curves, label, index, direction)
 
-    if direction is None:
-      for i in range(len(self._elements) - 2):
-        if self._direction[i] == 1:
-          if (self._elements[i]._elements[-1]._label !=
-              self._elements[i+1]._elements[0]._label):
-            self._direction[i+1] = -1
-          else:
-            pass 
-        else:
-          if (self._elements[i]._elements[-1]._label !=
-              self._elements[i+1]._elements[-1]._label):
-            self._direction[i+1] = -1
-          else:
+    tmpe = copy.deepcopy(self._elements) #  elements
+    tmpd = copy.deepcopy(self._direction)  #  direction
+    nswap = 0
+    while nswap < len(tmpe):
+      for i in range(len(tmpe)-1):
+        if tmpd[i] == 1:
+          if tmpe[i]._elements[-1]._label == tmpe[i+1]._elements[0]._label:
             pass
-      if (self._elements[-1]._elements[-1]._label 
-          != self._elements[0]._elements[0]._label):
-        self._direction[-1] = -1
-      else:
+          else:
+            tmpd[i+1] = -1
+            pass 
+          pass 
+        elif tmpd[i] == -1:
+          tmpe[i]._elements[0], tmpe[i]._elements[-1] = tmpe[i]._elements[-1], tmpe[i]._elements[0]
+          self._direction[i] = -1
+          tmpd = [1]*len(tmpd)
+          break
         pass
+      nswap += 1
+      pass
 
-    #for i in range(len(self._elements)):
-      #print (str(self._elements[i]._elements[0]._label) +', ' +
-             #str(self._elements[i]._elements[1]._label))
-      #print (self._direction[i])
+    if tmpe[-1]._elements[-1]._label != tmpe[0]._elements[0]._label:
+      self._direction[-1] = -1
+      pass
 
 
 class RuledSurface(Object2D):
