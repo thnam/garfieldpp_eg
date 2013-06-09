@@ -168,7 +168,7 @@ class Object2D(GeneralObject):
     surfaceloops = ObjectList(prefix + str(index) +'_sl')
     volumes = ObjectList(prefix + str(index) +'_vl')
 
-    if self._elements[0]._n_dimension == 1: 
+    if (type(self) is Line) or (type(self) is Circle):
       """ 
       Lines and circle arcs
       """
@@ -176,7 +176,10 @@ class Object2D(GeneralObject):
         points.Add(self._elements[i].Translate(vector))
 
       curves.Add(Line([self._elements[-1],points[-1]]))
-      curves.Add(Object2D(self._objtype, points))
+      if (type(self) is Line):
+        curves.Add(Line( points))
+      else:
+        curves.Add(Circle(points))
       curves.Add(Line([points[0],self._elements[0]]))
       lineloops.Add(LineLoop([self,curves[0],curves[1],curves[2]]))
       surfaces.Add(RuledSurface(lineloops))
@@ -186,6 +189,7 @@ class Object2D(GeneralObject):
       """ 
       Line loops
       """
+      org_points_label =[]
       org_points = []
       org_points_2 = []
       new_points = []
@@ -197,10 +201,12 @@ class Object2D(GeneralObject):
       """
       for i in range(len(self._elements)): #  translating points
         for j in range(len(self._elements[i]._elements)):
-          if self._elements[i]._elements[j] in org_points:
+          if self._elements[i]._elements[j]._label in org_points_label:
+          #if self._elements[i]._elements[j] in org_points:
             pass
           else:
             org_points.append(self._elements[i]._elements[j])
+            org_points_label.append(self._elements[i]._elements[j]._label)
             if j == 0 or j == len(self._elements[i]._elements) - 1:
               org_points_2.append(self._elements[i]._elements[j])
               pass
@@ -260,7 +266,11 @@ class Object2D(GeneralObject):
         surfaces.AddList(tmp_ext['surfaces'][1:])
         tmp_top_ll.append(tmp_ext['lineloops'][0])
         pass
-      surfaces.Add(Object2D(self._objtype, tmp_top_ll[:]))
+      if (type(self) is RuledSurface):
+        surfaces.Add(RuledSurface(tmp_top_ll[:]))
+      else:
+        surfaces.Add(PlaneSurface(tmp_top_ll[:]))
+
 
       tmp_surface_list = surfaces[:]
       tmp_surface_list.append(self)
